@@ -27,3 +27,4 @@ Thumbs.db
 
 # Local AI-assistant session transcripts -- never committed
 .cc-history/
+DeploymentArtifacts/

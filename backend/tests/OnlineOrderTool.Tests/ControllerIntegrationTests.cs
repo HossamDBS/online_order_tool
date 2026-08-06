@@ -1,6 +1,8 @@
+using System.IO;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using OnlineOrderTool.Core.DTOs;
 using OnlineOrderTool.Core.Models;
@@ -175,6 +177,42 @@ public class ControllerIntegrationTests : IClassFixture<WebApplicationFactory<Pr
     {
         var body = new { fieldName = "branch_code", value = "101" };
         var response = await _client.PutAsJsonAsync("/api/modules/upc_ecommerce/order-field", body);
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ApiUnsupportedMethod_ReturnsMethodNotAllowed()
+    {
+        var response = await _client.PutAsync("/api/modules", null);
+        Assert.Equal(HttpStatusCode.MethodNotAllowed, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UnknownNonApiExtensionlessRoute_ReturnsIndexHtml()
+    {
+        var tempRoot = Path.Combine(Path.GetTempPath(), "OnlineOrderToolTestWebRoot", Guid.NewGuid().ToString("N"));
+        var wwwroot = Path.Combine(tempRoot, "wwwroot");
+        Directory.CreateDirectory(wwwroot);
+        await File.WriteAllTextAsync(Path.Combine(wwwroot, "index.html"), "<html><body>TEST INDEX</body></html>");
+
+        using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        {
+            builder.UseContentRoot(tempRoot);
+            builder.UseWebRoot(wwwroot);
+        });
+
+        using var client = factory.CreateClient();
+        var response = await client.GetAsync("/some/frontend/path");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("TEST INDEX", body);
+    }
+
+    [Fact]
+    public async Task MissingStaticAssetWithExtension_ReturnsNotFound()
+    {
+        var response = await _client.GetAsync("/assets/nonexistent.svg");
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 

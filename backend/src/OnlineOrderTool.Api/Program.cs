@@ -1,3 +1,4 @@
+using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Http;
@@ -30,12 +31,6 @@ builder.Services.AddCors(options =>
                   .AllowAnyHeader()
                   .AllowAnyMethod()
                   .AllowCredentials();
-        }
-        else
-        {
-            policy.AllowAnyHeader()
-                  .AllowAnyMethod()
-                  .AllowAnyOrigin();
         }
     });
 });
@@ -100,10 +95,16 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.UseCors("AngularClient");
 app.UseHttpsRedirection();
 app.UseDefaultFiles();
 app.UseStaticFiles();
+app.UseRouting();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseCors("AngularClient");
+}
+
 app.UseAuthorization();
 app.MapControllers();
 
