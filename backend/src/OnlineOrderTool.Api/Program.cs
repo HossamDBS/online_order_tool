@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Http;
 using OnlineOrderTool.Api.Middleware;
 using OnlineOrderTool.Core.Modules;
 using OnlineOrderTool.Core.Repositories;
@@ -23,10 +24,19 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AngularClient", policy =>
     {
-        policy.WithOrigins("http://localhost:4200")
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
+        if (builder.Environment.IsDevelopment())
+        {
+            policy.WithOrigins("http://localhost:4200")
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
+        }
+        else
+        {
+            policy.AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowAnyOrigin();
+        }
     });
 });
 
@@ -92,9 +102,24 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("AngularClient");
 app.UseHttpsRedirection();
+app.UseDefaultFiles();
 app.UseStaticFiles();
 app.UseAuthorization();
 app.MapControllers();
+
+app.Use(async (context, next) =>
+{
+    await next();
+
+    if (context.Response.StatusCode == StatusCodes.Status404NotFound &&
+        !context.Request.Path.StartsWithSegments("/api") &&
+        !Path.HasExtension(context.Request.Path.Value ?? string.Empty))
+    {
+        context.Response.StatusCode = StatusCodes.Status200OK;
+        context.Request.Path = "/index.html";
+        await context.Response.SendFileAsync(Path.Combine(app.Environment.WebRootPath ?? string.Empty, "index.html"));
+    }
+});
 
 app.Run();
 
